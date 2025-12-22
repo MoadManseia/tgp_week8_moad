@@ -1,0 +1,107 @@
+.laravel-integration {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+.laravel-integration h2 {
+  color: #333;
+  border-bottom: 2px solid #6366f1;
+  padding-bottom: 10px;
+  margin-bottom: 30px;
+}
+
+.section {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.section h3 {
+  color: #4b5563;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.section button {
+  background-color: #6366f1;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.section button:hover:not(:disabled) {
+  background-color: #4f46e5;
+}
+
+.section button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.success-box {
+  background-color: #d1fae5;
+  border: 1px solid #10b981;
+  border-radius: 6px;
+  padding: 15px;
+  margin-top: 15px;
+  color: #065f46;
+}
+
+.success-box p {
+  margin: 5px 0;
+}
+
+.error-box {
+  background-color: #fee2e2;
+  border: 1px solid #ef4444;
+  border-radius: 6px;
+  padding: 15px;
+  margin-top: 15px;
+  color: #991b1b;
+}
+
+.error-box p {
+  margin: 5px 0;
+}
+
+.users-list {
+  margin-top: 15px;
+}
+
+.users-list h4 {
+  color: #4b5563;
+  margin-bottom: 10px;
+}
+
+.users-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.users-list li {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  color: #374151;
+}
+
+.users-list li strong {
+  color: #6366f1;
+}
+
+
+
+
