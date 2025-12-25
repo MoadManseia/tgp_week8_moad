@@ -4,38 +4,34 @@ import Login from "./components/Login";
 import SignUp from "./components/SignUp";
 import TodoList from "./components/TodoList";
 import Settings from "./components/Settings";
+import { isAuthenticated, getStoredUser, clearAuthData } from "./services/api";
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [username, setUsername] = useState("");
+  const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState("todos"); // 'todos' or 'settings'
   const [authPage, setAuthPage] = useState("login"); // 'login' or 'signup'
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is already logged in
-    const authStatus = localStorage.getItem("isAuthenticated");
-    const savedUsername = localStorage.getItem("username");
-
-    if (authStatus === "true" && savedUsername) {
-      setIsAuthenticated(true);
-      setUsername(savedUsername);
+    if (isAuthenticated()) {
+      const storedUser = getStoredUser();
+      if (storedUser) {
+        setUser(storedUser);
+      }
     }
+    setIsLoading(false);
   }, []);
 
-  const handleLogin = (user) => {
-    setIsAuthenticated(true);
-    setUsername(user);
+  const handleLogin = (userData) => {
+    setUser(userData);
     setCurrentPage("todos");
   };
 
+
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("username");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("userFullName");
-    localStorage.removeItem("userBio");
-    setIsAuthenticated(false);
-    setUsername("");
+    clearAuthData();
+    setUser(null);
     setCurrentPage("todos");
     setAuthPage("login");
   };
@@ -46,11 +42,10 @@ function App() {
 
   const handleBackToTodos = () => {
     setCurrentPage("todos");
-    // Refresh username in case it was changed
-    const savedUsername = localStorage.getItem("username");
-    if (savedUsername) {
-      setUsername(savedUsername);
-    }
+  };
+
+  const handleUserUpdate = (updatedUser) => {
+    setUser(updatedUser);
   };
 
   const switchToSignUp = () => {
@@ -61,6 +56,16 @@ function App() {
     setAuthPage("login");
   };
 
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="App loading-screen">
+        <div className="loading-spinner-large"></div>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
   const renderAuthPage = () => {
     if (authPage === "signup") {
       return <SignUp onSwitchToLogin={switchToLogin} />;
@@ -70,15 +75,16 @@ function App() {
 
   return (
     <div className="App">
-      {isAuthenticated ? (
+      {user ? (
         currentPage === "settings" ? (
           <Settings
-            username={username}
+            user={user}
             onLogout={handleLogout}
             onBack={handleBackToTodos}
+            onUserUpdate={handleUserUpdate}
           />
         ) : (
-          <TodoList username={username} onSettings={handleSettings} />
+          <TodoList user={user} onSettings={handleSettings} />
         )
       ) : (
         renderAuthPage()

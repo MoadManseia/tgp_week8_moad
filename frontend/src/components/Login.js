@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import './Login.css';
+import { login } from '../services/api';
 
 function Login({ onLogin, onSwitchToSignUp }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!username.trim() || !password.trim()) {
@@ -14,31 +16,26 @@ function Login({ onLogin, onSwitchToSignUp }) {
       return;
     }
 
-    // Check if user exists in localStorage
-    const registeredUsername = localStorage.getItem('registeredUsername');
-    const registeredPassword = localStorage.getItem('registeredPassword');
+    setIsLoading(true);
+    setError('');
 
-    if (!registeredUsername) {
-      setError('No account found. Please sign up first.');
-      return;
+    try {
+      const response = await login({ username, password });
+      
+      // Call the onLogin callback with user data
+      onLogin(response.user);
+    } catch (err) {
+      // Show user-friendly error message
+      if (err.message.includes('Invalid credentials') || err.message.includes('401')) {
+        setError('Invalid username or password. Please try again.');
+      } else if (err.message.includes('Network Error')) {
+        setError('Unable to connect to server. Please check your connection.');
+      } else {
+        setError(err.message || 'Login failed. Please check your credentials.');
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    if (username !== registeredUsername) {
-      setError('Username not found');
-      return;
-    }
-
-    if (password !== registeredPassword) {
-      setError('Incorrect password');
-      return;
-    }
-
-    // Successful login
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('username', username);
-    localStorage.setItem('userEmail', localStorage.getItem('registeredEmail') || '');
-    localStorage.setItem('userFullName', localStorage.getItem('registeredFullName') || '');
-    onLogin(username);
   };
 
   return (
@@ -49,14 +46,15 @@ function Login({ onLogin, onSwitchToSignUp }) {
         
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="username">Username</label>
+            <label htmlFor="username">Username or Email</label>
             <input
               type="text"
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your username"
+              placeholder="Enter your username or email"
               autoComplete="username"
+              disabled={isLoading}
             />
           </div>
           
@@ -69,13 +67,23 @@ function Login({ onLogin, onSwitchToSignUp }) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               autoComplete="current-password"
+              disabled={isLoading}
             />
           </div>
           
-          {error && <div className="error-message">{error}</div>}
+          {error && (
+            <div className="error-message">
+              <span className="error-icon">⚠️</span>
+              <span className="error-text">{error}</span>
+            </div>
+          )}
           
-          <button type="submit" className="login-button">
-            Sign In
+          <button type="submit" className="login-button" disabled={isLoading}>
+            {isLoading ? (
+              <span className="loading-spinner"></span>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
         
@@ -85,6 +93,7 @@ function Login({ onLogin, onSwitchToSignUp }) {
             type="button" 
             className="switch-to-signup"
             onClick={onSwitchToSignUp}
+            disabled={isLoading}
           >
             Create Account
           </button>
@@ -95,4 +104,3 @@ function Login({ onLogin, onSwitchToSignUp }) {
 }
 
 export default Login;
-

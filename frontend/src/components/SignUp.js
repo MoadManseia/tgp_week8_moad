@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import './SignUp.css';
+import { register, clearAuthData } from '../services/api';
 
 function SignUp({ onSwitchToLogin }) {
   const [formData, setFormData] = useState({
-    fullName: '',
     username: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -22,10 +23,6 @@ function SignUp({ onSwitchToLogin }) {
   };
 
   const validateForm = () => {
-    if (!formData.fullName.trim()) {
-      setError('Please enter your full name');
-      return false;
-    }
     if (!formData.username.trim()) {
       setError('Please enter a username');
       return false;
@@ -66,19 +63,29 @@ function SignUp({ onSwitchToLogin }) {
     }
 
     setIsLoading(true);
+    setError('');
 
-    // Simulate API call delay
-    setTimeout(() => {
-      // Store user registration data (but don't authenticate yet)
-      localStorage.setItem('registeredUsername', formData.username);
-      localStorage.setItem('registeredPassword', formData.password);
-      localStorage.setItem('registeredEmail', formData.email);
-      localStorage.setItem('registeredFullName', formData.fullName);
+    try {
+      await register({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        password_confirmation: formData.confirmPassword,
+      });
       
+      // Clear any auto-stored auth data (user must login manually)
+      clearAuthData();
+      
+      // Show success and navigate to login page
+      setSuccess(true);
+      setTimeout(() => {
+        onSwitchToLogin();
+      }, 2000);
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
       setIsLoading(false);
-      // Navigate to login page after successful registration
-      onSwitchToLogin();
-    }, 800);
+    }
   };
 
   return (
@@ -91,19 +98,6 @@ function SignUp({ onSwitchToLogin }) {
         
         <form onSubmit={handleSubmit} className="signup-form">
           <div className="form-group">
-            <label htmlFor="fullName">Full Name</label>
-            <input
-              type="text"
-              id="fullName"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              placeholder="Enter your full name"
-              autoComplete="name"
-            />
-          </div>
-
-          <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
               type="text"
@@ -113,6 +107,7 @@ function SignUp({ onSwitchToLogin }) {
               onChange={handleChange}
               placeholder="Choose a username"
               autoComplete="username"
+              disabled={isLoading}
             />
           </div>
 
@@ -126,6 +121,7 @@ function SignUp({ onSwitchToLogin }) {
               onChange={handleChange}
               placeholder="Enter your email"
               autoComplete="email"
+              disabled={isLoading}
             />
           </div>
           
@@ -137,8 +133,9 @@ function SignUp({ onSwitchToLogin }) {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Create a password"
+              placeholder="Create a password (min. 6 characters)"
               autoComplete="new-password"
+              disabled={isLoading}
             />
           </div>
 
@@ -152,12 +149,25 @@ function SignUp({ onSwitchToLogin }) {
               onChange={handleChange}
               placeholder="Confirm your password"
               autoComplete="new-password"
+              disabled={isLoading}
             />
           </div>
           
-          {error && <div className="error-message">{error}</div>}
+          {error && (
+            <div className="error-message">
+              <span className="error-icon">⚠️</span>
+              <span className="error-text">{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="success-message">
+              <span className="success-icon">✓</span>
+              <span className="success-text">Account created successfully! Redirecting to sign in...</span>
+            </div>
+          )}
           
-          <button type="submit" className="signup-button" disabled={isLoading}>
+          <button type="submit" className="signup-button" disabled={isLoading || success}>
             {isLoading ? (
               <span className="loading-spinner"></span>
             ) : (
@@ -172,6 +182,7 @@ function SignUp({ onSwitchToLogin }) {
             type="button" 
             className="switch-to-login"
             onClick={onSwitchToLogin}
+            disabled={isLoading}
           >
             Sign In
           </button>
@@ -182,4 +193,3 @@ function SignUp({ onSwitchToLogin }) {
 }
 
 export default SignUp;
-

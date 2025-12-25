@@ -1,29 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import './Settings.css';
+import { logout, setStoredUser } from '../services/api';
 
-function Settings({ username, onLogout, onBack }) {
+function Settings({ user, onLogout, onBack, onUserUpdate }) {
   const [userData, setUserData] = useState({
     username: '',
     email: '',
-    fullName: '',
-    bio: ''
   });
   const [message, setMessage] = useState('');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
-    // Load user data from localStorage
-    const savedUsername = localStorage.getItem('username') || username || '';
-    const savedEmail = localStorage.getItem('userEmail') || '';
-    const savedFullName = localStorage.getItem('userFullName') || '';
-    const savedBio = localStorage.getItem('userBio') || '';
-
-    setUserData({
-      username: savedUsername,
-      email: savedEmail,
-      fullName: savedFullName,
-      bio: savedBio
-    });
-  }, [username]);
+    // Load user data from props
+    if (user) {
+      setUserData({
+        username: user.username || '',
+        email: user.email || '',
+      });
+    }
+  }, [user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -36,14 +31,28 @@ function Settings({ username, onLogout, onBack }) {
   const handleSave = (e) => {
     e.preventDefault();
     
-    // Save to localStorage
-    localStorage.setItem('username', userData.username);
-    localStorage.setItem('userEmail', userData.email);
-    localStorage.setItem('userFullName', userData.fullName);
-    localStorage.setItem('userBio', userData.bio);
+    // Update stored user data
+    const updatedUser = { ...user, ...userData };
+    setStoredUser(updatedUser);
+    
+    // Notify parent component
+    if (onUserUpdate) {
+      onUserUpdate(updatedUser);
+    }
 
     setMessage('Settings saved successfully!');
     setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      onLogout();
+    }
   };
 
   return (
@@ -72,8 +81,9 @@ function Settings({ username, onLogout, onBack }) {
                 value={userData.username}
                 onChange={handleChange}
                 placeholder="Enter username"
-                required
+                disabled
               />
+              <small className="field-hint">Username cannot be changed</small>
             </div>
 
             <div className="form-group">
@@ -85,31 +95,9 @@ function Settings({ username, onLogout, onBack }) {
                 value={userData.email}
                 onChange={handleChange}
                 placeholder="Enter your email"
+                disabled
               />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="fullName">Full Name</label>
-              <input
-                type="text"
-                id="fullName"
-                name="fullName"
-                value={userData.fullName}
-                onChange={handleChange}
-                placeholder="Enter your full name"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="bio">Bio</label>
-              <textarea
-                id="bio"
-                name="bio"
-                value={userData.bio}
-                onChange={handleChange}
-                placeholder="Tell us about yourself..."
-                rows="4"
-              />
+              <small className="field-hint">Email cannot be changed</small>
             </div>
 
             {message && (
@@ -117,18 +105,16 @@ function Settings({ username, onLogout, onBack }) {
                 {message}
               </div>
             )}
-
-            <div className="settings-actions">
-              <button type="submit" className="save-button">
-                Save Changes
-              </button>
-            </div>
           </form>
 
           <div className="logout-section">
             <h3>Account Actions</h3>
-            <button onClick={onLogout} className="logout-button">
-              Logout
+            <button 
+              onClick={handleLogout} 
+              className="logout-button"
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
             </button>
           </div>
         </div>
@@ -138,4 +124,3 @@ function Settings({ username, onLogout, onBack }) {
 }
 
 export default Settings;
-
