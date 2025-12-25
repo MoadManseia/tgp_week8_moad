@@ -76,6 +76,19 @@
   display: flex;
   gap: 10px;
   margin-bottom: 30px;
+  align-items: flex-start;
+}
+
+.task-inputs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-input-row {
+  display: flex;
+  gap: 8px;
 }
 
 .task-input {
@@ -93,6 +106,68 @@
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.description-toggle {
+  width: 48px;
+  height: 48px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  background: #f5f5f5;
+  color: #667eea;
+  font-size: 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.description-toggle:hover {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.description-toggle.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.description-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  transition: all 0.3s ease;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.description-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.description-input::placeholder {
+  color: #aaa;
+}
+
 .add-button {
   padding: 14px 28px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -104,6 +179,7 @@
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   white-space: nowrap;
+  height: 48px;
 }
 
 .add-button:hover {
@@ -191,8 +267,15 @@
   accent-color: #667eea;
 }
 
-.todo-text {
+.todo-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.todo-text {
   font-size: 1rem;
   color: #333;
   cursor: pointer;
@@ -202,6 +285,28 @@
 .todo-item.completed .todo-text {
   text-decoration: line-through;
   color: #999;
+}
+
+.todo-description {
+  font-size: 0.85rem;
+  color: #666;
+  word-break: break-word;
+  line-height: 1.4;
+  padding-left: 2px;
+}
+
+.todo-item.completed .todo-description {
+  color: #aaa;
+}
+
+.todo-item.has-description {
+  align-items: flex-start;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.todo-item.has-description .todo-checkbox {
+  margin-top: 2px;
 }
 
 .edit-input {
@@ -431,6 +536,17 @@
 
   .add-button {
     width: 100%;
+    height: auto;
+    padding: 14px 28px;
+  }
+
+  .task-input-row {
+    flex-direction: row;
+  }
+
+  .description-toggle {
+    width: 48px;
+    flex-shrink: 0;
   }
 
   .header-content {

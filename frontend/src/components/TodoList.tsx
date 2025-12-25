@@ -22,6 +22,8 @@ interface TodoItemProps {
 const TodoList: React.FC<TodoListProps> = ({ user }) => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTask, setNewTask] = useState<string>('');
+  const [newDescription, setNewDescription] = useState<string>('');
+  const [showDescription, setShowDescription] = useState<boolean>(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -71,13 +73,17 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
     setIsAddingTask(true);
     setError('');
     const taskText = newTask.trim();
+    const taskDescription = newDescription.trim();
     setNewTask('');
+    setNewDescription('');
+    setShowDescription(false);
 
     try {
       // Add minimum delay to show skeleton
       const [task] = await Promise.all([
         createTask({
           title: taskText,
+          description: taskDescription || undefined,
           is_completed: false,
         }),
         new Promise<void>(resolve => setTimeout(resolve, 800))
@@ -95,6 +101,7 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
       setTodos(prev => [newTodo, ...prev]);
     } catch (err) {
       setNewTask(taskText); // Restore task text on error
+      setNewDescription(taskDescription); // Restore description on error
       setError('Failed to add task. Please try again.');
       console.error('Add task error:', err);
     } finally {
@@ -255,14 +262,38 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
           />
 
           <form onSubmit={addTask} className="add-task-form">
-            <input
-              type="text"
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-              placeholder="Add a new task..."
-              className="task-input"
-              disabled={isSubmitting}
-            />
+            <div className="task-inputs">
+              <div className="task-input-row">
+                <input
+                  type="text"
+                  value={newTask}
+                  onChange={(e) => setNewTask(e.target.value)}
+                  placeholder="Add a new task..."
+                  className="task-input"
+                  disabled={isSubmitting}
+                />
+                <button 
+                  type="button" 
+                  className={`description-toggle ${showDescription ? 'active' : ''}`}
+                  onClick={() => setShowDescription(!showDescription)}
+                  disabled={isSubmitting}
+                  title={showDescription ? 'Hide description' : 'Add description'}
+                >
+                  {showDescription ? '−' : '+'}
+                </button>
+              </div>
+              
+              {showDescription && (
+                <textarea
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Add description (optional)..."
+                  className="description-input"
+                  disabled={isSubmitting}
+                  rows={2}
+                />
+              )}
+            </div>
             <button type="submit" className="add-button" disabled={isSubmitting || !newTask.trim()}>
               {isSubmitting ? 'Adding...' : 'Add Task'}
             </button>
@@ -331,7 +362,7 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
             )}
           </div>
 
-          {completedCount > 0 && (
+          {filter === 'completed' && completedCount > 0 && (
             <button onClick={clearCompleted} className="clear-button">
               Clear Completed ({completedCount})
             </button>
@@ -392,7 +423,7 @@ const TodoItem: React.FC<TodoItemProps> = ({
   }
 
   return (
-    <div className={`todo-item ${todo.completed ? 'completed' : ''} ${isUpdating ? 'updating' : ''}`}>
+    <div className={`todo-item ${todo.completed ? 'completed' : ''} ${isUpdating ? 'updating' : ''} ${todo.description ? 'has-description' : ''}`}>
       <input
         type="checkbox"
         checked={todo.completed}
@@ -401,24 +432,33 @@ const TodoItem: React.FC<TodoItemProps> = ({
         disabled={isUpdating}
       />
       
-      {isEditing ? (
-        <input
-          type="text"
-          value={editText}
-          onChange={(e) => setEditText(e.target.value)}
-          onBlur={handleEdit}
-          onKeyDown={handleKeyPress}
-          className="edit-input"
-          autoFocus
-        />
-      ) : (
-        <span
-          className="todo-text"
-          onDoubleClick={handleEdit}
-        >
-          {todo.text}
-        </span>
-      )}
+      <div className="todo-content">
+        {isEditing ? (
+          <input
+            type="text"
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            onBlur={handleEdit}
+            onKeyDown={handleKeyPress}
+            className="edit-input"
+            autoFocus
+          />
+        ) : (
+          <>
+            <span
+              className="todo-text"
+              onDoubleClick={handleEdit}
+            >
+              {todo.text}
+            </span>
+            {todo.description && (
+              <span className="todo-description">
+                {todo.description}
+              </span>
+            )}
+          </>
+        )}
+      </div>
       
       <div className="todo-actions">
         <button
