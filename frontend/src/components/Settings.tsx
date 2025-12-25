@@ -1,28 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './Settings.css';
+import { ProfileSkeleton } from './Skeleton';
 import { logout, setStoredUser } from '../services/api';
+import { User } from '../types';
 
-function Settings({ user, onLogout, onUserUpdate }) {
+interface SettingsProps {
+  user: User | null;
+  onLogout: () => void;
+  onUserUpdate: (user: User) => void;
+}
+
+interface UserData {
+  username: string;
+  email: string;
+}
+
+const Settings: React.FC<SettingsProps> = ({ user, onLogout, onUserUpdate }) => {
   const navigate = useNavigate();
-  const [userData, setUserData] = useState({
+  const [userData, setUserData] = useState<UserData>({
     username: '',
     email: '',
   });
-  const [message, setMessage] = useState('');
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [message, setMessage] = useState<string>('');
+  const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Load user data from props
-    if (user) {
-      setUserData({
-        username: user.username || '',
-        email: user.email || '',
-      });
-    }
+    // Simulate loading time for skeleton demo
+    const timer = setTimeout(() => {
+      if (user) {
+        setUserData({
+          username: user.username || '',
+          email: user.email || '',
+        });
+      }
+      setIsLoading(false);
+    }, 800);
+    
+    return () => clearTimeout(timer);
   }, [user]);
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     setUserData(prev => ({
       ...prev,
@@ -30,15 +49,12 @@ function Settings({ user, onLogout, onUserUpdate }) {
     }));
   };
 
-  const handleSave = (e) => {
+  const handleSave = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     
-    // Update stored user data
-    const updatedUser = { ...user, ...userData };
-    setStoredUser(updatedUser);
-    
-    // Notify parent component
-    if (onUserUpdate) {
+    if (user) {
+      const updatedUser: User = { ...user, ...userData };
+      setStoredUser(updatedUser);
       onUserUpdate(updatedUser);
     }
 
@@ -46,7 +62,7 @@ function Settings({ user, onLogout, onUserUpdate }) {
     setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async (): Promise<void> => {
     setIsLoggingOut(true);
     try {
       await logout();
@@ -71,6 +87,10 @@ function Settings({ user, onLogout, onUserUpdate }) {
 
       <main className="settings-main">
         <div className="settings-card">
+          {isLoading ? (
+            <ProfileSkeleton />
+          ) : (
+            <>
           <h2>User Information</h2>
           <p className="settings-subtitle">Manage your account details</p>
 
@@ -120,10 +140,13 @@ function Settings({ user, onLogout, onUserUpdate }) {
               {isLoggingOut ? 'Logging out...' : 'Logout'}
             </button>
           </div>
+            </>
+          )}
         </div>
       </main>
     </div>
   );
-}
+};
 
 export default Settings;
+

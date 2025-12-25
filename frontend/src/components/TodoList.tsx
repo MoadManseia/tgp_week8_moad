@@ -1,26 +1,48 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, FormEvent, KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import './TodoList.css';
 import SearchBar from './SearchBar';
+import { TodoListSkeleton } from './Skeleton';
 import { getTasks, createTask, updateTask, deleteTask } from '../services/api';
+import { User, Todo } from '../types';
 
-function TodoList({ user }) {
-  const [todos, setTodos] = useState([]);
-  const [newTask, setNewTask] = useState('');
-  const [filter, setFilter] = useState('all'); // all, active, completed
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+interface TodoListProps {
+  user: User | null;
+}
 
-  // Load todos from API on mount
-  const loadTasks = useCallback(async () => {
+interface TodoItemProps {
+  todo: Todo;
+  onToggle: (id: number) => void;
+  onDelete: (id: number) => void;
+  onEdit: (id: number, newText: string) => void;
+  isDeleting?: boolean;
+  isUpdating?: boolean;
+}
+
+const TodoList: React.FC<TodoListProps> = ({ user }) => {
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [newTask, setNewTask] = useState<string>('');
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isAddingTask, setIsAddingTask] = useState<boolean>(false);
+  const [deletingTaskIds, setDeletingTaskIds] = useState<Set<number>>(new Set());
+  const [updatingTaskIds, setUpdatingTaskIds] = useState<Set<number>>(new Set());
+
+  const loadTasks = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
       setError('');
-      const tasks = await getTasks();
-      // Map backend task format to frontend format
-      const mappedTasks = tasks.map(task => ({
+      
+      // Add minimum delay to show skeleton (1.5 seconds minimum)
+      const [tasksResult] = await Promise.all([
+        getTasks(),
+        new Promise<void>(resolve => setTimeout(resolve, 1500))
+      ]);
+      
+      const mappedTasks: Todo[] = tasksResult.map(task => ({
         id: task.id,
         text: task.title,
         description: task.description,
@@ -41,20 +63,27 @@ function TodoList({ user }) {
     loadTasks();
   }, [loadTasks]);
 
-  const addTask = async (e) => {
+  const addTask = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     if (!newTask.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
+    setIsAddingTask(true);
     setError('');
+    const taskText = newTask.trim();
+    setNewTask('');
 
     try {
-      const task = await createTask({
-        title: newTask.trim(),
-        is_completed: false,
-      });
+      // Add minimum delay to show skeleton
+      const [task] = await Promise.all([
+        createTask({
+          title: taskText,
+          is_completed: false,
+        }),
+        new Promise<void>(resolve => setTimeout(resolve, 800))
+      ]);
 
-      const newTodo = {
+      const newTodo: Todo = {
         id: task.id,
         text: task.title,
         description: task.description,
@@ -63,21 +92,22 @@ function TodoList({ user }) {
         updatedAt: task.updated_at,
       };
 
-      setTodos([newTodo, ...todos]);
-      setNewTask('');
+      setTodos(prev => [newTodo, ...prev]);
     } catch (err) {
+      setNewTask(taskText); // Restore task text on error
       setError('Failed to add task. Please try again.');
       console.error('Add task error:', err);
     } finally {
       setIsSubmitting(false);
+      setIsAddingTask(false);
     }
   };
 
-  const toggleComplete = async (id) => {
+  const toggleComplete = async (id: number): Promise<void> => {
     const todo = todos.find(t => t.id === id);
-    if (!todo) return;
+    if (!todo || updatingTaskIds.has(id)) return;
 
-    // Optimistic update
+    setUpdatingTaskIds(prev => new Set(prev).add(id));
     setTodos(todos.map(t =>
       t.id === id ? { ...t, completed: !t.completed } : t
     ));
@@ -85,39 +115,53 @@ function TodoList({ user }) {
     try {
       await updateTask(id, { is_completed: !todo.completed });
     } catch (err) {
-      // Revert on error
       setTodos(todos.map(t =>
         t.id === id ? { ...t, completed: todo.completed } : t
       ));
       setError('Failed to update task. Please try again.');
       console.error('Toggle complete error:', err);
+    } finally {
+      setUpdatingTaskIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   };
 
-  const deleteTaskHandler = async (id) => {
-    // Optimistic update
+  const deleteTaskHandler = async (id: number): Promise<void> => {
     const todoToDelete = todos.find(t => t.id === id);
-    setTodos(todos.filter(t => t.id !== id));
+    if (!todoToDelete || deletingTaskIds.has(id)) return;
+    
+    // Add to deleting set to show skeleton
+    setDeletingTaskIds(prev => new Set(prev).add(id));
 
     try {
-      await deleteTask(id);
+      // Add minimum delay to show skeleton
+      await Promise.all([
+        deleteTask(id),
+        new Promise<void>(resolve => setTimeout(resolve, 600))
+      ]);
+      
+      setTodos(todos.filter(t => t.id !== id));
     } catch (err) {
-      // Revert on error
-      setTodos([...todos, todoToDelete].sort((a, b) => 
-        new Date(b.createdAt) - new Date(a.createdAt)
-      ));
       setError('Failed to delete task. Please try again.');
       console.error('Delete task error:', err);
+    } finally {
+      setDeletingTaskIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   };
 
-  const editTask = async (id, newText) => {
+  const editTask = async (id: number, newText: string): Promise<void> => {
     if (!newText.trim()) return;
 
     const todo = todos.find(t => t.id === id);
     if (!todo) return;
 
-    // Optimistic update
     setTodos(todos.map(t =>
       t.id === id ? { ...t, text: newText.trim() } : t
     ));
@@ -125,7 +169,6 @@ function TodoList({ user }) {
     try {
       await updateTask(id, { title: newText.trim() });
     } catch (err) {
-      // Revert on error
       setTodos(todos.map(t =>
         t.id === id ? { ...t, text: todo.text } : t
       ));
@@ -134,17 +177,13 @@ function TodoList({ user }) {
     }
   };
 
-  const clearCompleted = async () => {
+  const clearCompleted = async (): Promise<void> => {
     const completedTodos = todos.filter(t => t.completed);
-    
-    // Optimistic update
     setTodos(todos.filter(t => !t.completed));
 
     try {
-      // Delete all completed tasks
       await Promise.all(completedTodos.map(t => deleteTask(t.id)));
     } catch (err) {
-      // Revert on error - reload all tasks
       await loadTasks();
       setError('Failed to clear completed tasks. Please try again.');
       console.error('Clear completed error:', err);
@@ -152,11 +191,8 @@ function TodoList({ user }) {
   };
 
   const filteredTodos = todos.filter(todo => {
-    // First apply status filter
     if (filter === 'active' && todo.completed) return false;
     if (filter === 'completed' && !todo.completed) return false;
-    
-    // Then apply search filter
     if (searchQuery.trim()) {
       return todo.text.toLowerCase().includes(searchQuery.toLowerCase());
     }
@@ -174,13 +210,15 @@ function TodoList({ user }) {
             <h1>My Todo List</h1>
             <div className="user-info">
               <span className="username">Welcome, {user?.username || 'User'}!</span>
+              <Link to="/settings" className="settings-button">
+                ⚙️ Settings
+              </Link>
             </div>
           </div>
         </header>
         <main className="todo-main">
-          <div className="todo-card loading-card">
-            <div className="loading-spinner"></div>
-            <p>Loading your tasks...</p>
+          <div className="todo-card">
+            <TodoListSkeleton />
           </div>
         </main>
       </div>
@@ -252,7 +290,21 @@ function TodoList({ user }) {
           </div>
 
           <div className="todos-list">
-            {filteredTodos.length === 0 ? (
+            {/* Show skeleton when adding a new task */}
+            {isAddingTask && (
+              <div className="todo-item adding">
+                <div className="todo-item-skeleton-inline">
+                  <div className="skeleton-checkbox"></div>
+                  <div className="skeleton-text"></div>
+                  <div className="skeleton-actions">
+                    <div className="skeleton-btn"></div>
+                    <div className="skeleton-btn"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {filteredTodos.length === 0 && !isAddingTask ? (
               <div className="empty-state">
                 {searchQuery ? (
                   <p>No tasks matching "{searchQuery}"</p>
@@ -272,6 +324,8 @@ function TodoList({ user }) {
                   onToggle={toggleComplete}
                   onDelete={deleteTaskHandler}
                   onEdit={editTask}
+                  isDeleting={deletingTaskIds.has(todo.id)}
+                  isUpdating={updatingTaskIds.has(todo.id)}
                 />
               ))
             )}
@@ -286,13 +340,20 @@ function TodoList({ user }) {
       </main>
     </div>
   );
-}
+};
 
-function TodoItem({ todo, onToggle, onDelete, onEdit }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(todo.text);
+const TodoItem: React.FC<TodoItemProps> = ({ 
+  todo, 
+  onToggle, 
+  onDelete, 
+  onEdit,
+  isDeleting = false,
+  isUpdating = false 
+}) => {
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editText, setEditText] = useState<string>(todo.text);
 
-  const handleEdit = () => {
+  const handleEdit = (): void => {
     if (isEditing) {
       if (editText.trim() && editText.trim() !== todo.text) {
         onEdit(todo.id, editText);
@@ -305,7 +366,7 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
     }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       handleEdit();
     } else if (e.key === 'Escape') {
@@ -314,13 +375,30 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
     }
   };
 
+  // Show skeleton when deleting
+  if (isDeleting) {
+    return (
+      <div className="todo-item deleting">
+        <div className="todo-item-skeleton-inline">
+          <div className="skeleton-checkbox"></div>
+          <div className="skeleton-text deleting-pulse"></div>
+          <div className="skeleton-actions">
+            <div className="skeleton-btn"></div>
+            <div className="skeleton-btn"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+    <div className={`todo-item ${todo.completed ? 'completed' : ''} ${isUpdating ? 'updating' : ''}`}>
       <input
         type="checkbox"
         checked={todo.completed}
         onChange={() => onToggle(todo.id)}
-        className="todo-checkbox"
+        className={`todo-checkbox ${isUpdating ? 'loading' : ''}`}
+        disabled={isUpdating}
       />
       
       {isEditing ? (
@@ -347,6 +425,7 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
           onClick={handleEdit}
           className="edit-button"
           title="Edit task"
+          disabled={isUpdating}
         >
           {isEditing ? '✓' : '✎'}
         </button>
@@ -354,12 +433,14 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
           onClick={() => onDelete(todo.id)}
           className="delete-button"
           title="Delete task"
+          disabled={isUpdating}
         >
           ×
         </button>
       </div>
     </div>
   );
-}
+};
 
 export default TodoList;
+

@@ -1,21 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, FormEvent, ChangeEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './SignUp.css';
 import { register, clearAuthData } from '../services/api';
 
-function SignUp() {
+interface FormData {
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+const SignUp: React.FC = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     username: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -24,7 +31,7 @@ function SignUp() {
     setError('');
   };
 
-  const validateForm = () => {
+  const validateForm = (): boolean => {
     if (!formData.username.trim()) {
       setError('Please enter a username');
       return false;
@@ -57,7 +64,7 @@ function SignUp() {
     return true;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -75,16 +82,14 @@ function SignUp() {
         password_confirmation: formData.confirmPassword,
       });
       
-      // Clear any auto-stored auth data (user must login manually)
       clearAuthData();
-      
-      // Show success and navigate to login page
       setSuccess(true);
       setTimeout(() => {
         navigate('/login');
       }, 2000);
     } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Registration failed';
+      setError(errorMessage || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -187,6 +192,7 @@ function SignUp() {
       </div>
     </div>
   );
-}
+};
 
 export default SignUp;
+

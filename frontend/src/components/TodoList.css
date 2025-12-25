@@ -349,6 +349,81 @@
   box-shadow: none;
 }
 
+/* Inline skeleton styles for adding/deleting tasks */
+.todo-item.adding,
+.todo-item.deleting {
+  opacity: 0.8;
+}
+
+.todo-item-skeleton-inline {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+}
+
+.skeleton-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e0e0e0 0%, #f0f0f0 50%, #e0e0e0 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+.skeleton-text {
+  flex: 1;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e0e0e0 0%, #f0f0f0 50%, #e0e0e0 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite ease-in-out;
+}
+
+.skeleton-text.deleting-pulse {
+  animation: shimmer 1.2s infinite ease-in-out, deletePulse 0.6s infinite ease-in-out;
+}
+
+@keyframes deletePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.skeleton-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.skeleton-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e0e0e0 0%, #f0f0f0 50%, #e0e0e0 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite ease-in-out;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Updating state */
+.todo-item.updating {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.todo-checkbox.loading {
+  animation: pulse 0.8s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 @media (max-width: 600px) {
   .add-task-form {
     flex-direction: column;

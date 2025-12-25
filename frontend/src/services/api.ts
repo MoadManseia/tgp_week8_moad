@@ -1,10 +1,19 @@
-import axios from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
+import { 
+  User, 
+  AuthResponse, 
+  LoginCredentials, 
+  RegisterData, 
+  Task, 
+  CreateTaskData, 
+  UpdateTaskData 
+} from '../types';
 
 // API configuration for Laravel backend
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
 
 // Create axios instance with default config
-const api = axios.create({
+const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -29,7 +38,7 @@ api.interceptors.request.use(
 // Response interceptor - handle errors globally
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error: AxiosError<{ message?: string; errors?: Record<string, string[]> }>) => {
     // Handle 401 Unauthorized - token expired or invalid
     if (error.response?.status === 401) {
       clearAuthData();
@@ -59,7 +68,7 @@ api.interceptors.response.use(
 /**
  * Set the auth token in localStorage
  */
-export const setAuthToken = (token) => {
+export const setAuthToken = (token: string | null): void => {
   if (token) {
     localStorage.setItem('auth_token', token);
   } else {
@@ -70,7 +79,7 @@ export const setAuthToken = (token) => {
 /**
  * Get stored user data
  */
-export const getStoredUser = () => {
+export const getStoredUser = (): User | null => {
   const userData = localStorage.getItem('user');
   return userData ? JSON.parse(userData) : null;
 };
@@ -78,7 +87,7 @@ export const getStoredUser = () => {
 /**
  * Set user data in localStorage
  */
-export const setStoredUser = (user) => {
+export const setStoredUser = (user: User | null): void => {
   if (user) {
     localStorage.setItem('user', JSON.stringify(user));
   } else {
@@ -89,14 +98,14 @@ export const setStoredUser = (user) => {
 /**
  * Check if user is authenticated
  */
-export const isAuthenticated = () => {
+export const isAuthenticated = (): boolean => {
   return !!localStorage.getItem('auth_token');
 };
 
 /**
  * Clear all auth data
  */
-export const clearAuthData = () => {
+export const clearAuthData = (): void => {
   localStorage.removeItem('auth_token');
   localStorage.removeItem('user');
 };
@@ -107,10 +116,9 @@ export const clearAuthData = () => {
 
 /**
  * Register a new user
- * @param {Object} userData - { username, email, password, password_confirmation }
  */
-export const register = async (userData) => {
-  const response = await api.post('/register', userData);
+export const register = async (userData: RegisterData): Promise<AuthResponse> => {
+  const response = await api.post<AuthResponse>('/register', userData);
   
   // Store token and user data
   if (response.data.access_token) {
@@ -123,10 +131,9 @@ export const register = async (userData) => {
 
 /**
  * Login user
- * @param {Object} credentials - { username, password }
  */
-export const login = async (credentials) => {
-  const response = await api.post('/login', credentials);
+export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+  const response = await api.post<AuthResponse>('/login', credentials);
   
   // Store token and user data
   if (response.data.access_token) {
@@ -140,7 +147,7 @@ export const login = async (credentials) => {
 /**
  * Logout user
  */
-export const logout = async () => {
+export const logout = async (): Promise<void> => {
   try {
     await api.post('/logout');
   } catch (error) {
@@ -153,8 +160,8 @@ export const logout = async () => {
 /**
  * Get current user profile
  */
-export const getProfile = async () => {
-  const response = await api.get('/user');
+export const getProfile = async (): Promise<User> => {
+  const response = await api.get<User>('/user');
   return response.data;
 };
 
@@ -165,46 +172,42 @@ export const getProfile = async () => {
 /**
  * Get all tasks for the authenticated user
  */
-export const getTasks = async () => {
-  const response = await api.get('/tasks');
+export const getTasks = async (): Promise<Task[]> => {
+  const response = await api.get<Task[]>('/tasks');
   return response.data;
 };
 
 /**
  * Get a single task by ID
- * @param {number} id - Task ID
  */
-export const getTask = async (id) => {
-  const response = await api.get(`/tasks/${id}`);
+export const getTask = async (id: number): Promise<Task> => {
+  const response = await api.get<Task>(`/tasks/${id}`);
   return response.data;
 };
 
 /**
  * Create a new task
- * @param {Object} taskData - { title, description?, is_completed? }
  */
-export const createTask = async (taskData) => {
-  const response = await api.post('/tasks', taskData);
+export const createTask = async (taskData: CreateTaskData): Promise<Task> => {
+  const response = await api.post<Task>('/tasks', taskData);
   return response.data;
 };
 
 /**
  * Update a task
- * @param {number} id - Task ID
- * @param {Object} taskData - { title?, description?, is_completed? }
  */
-export const updateTask = async (id, taskData) => {
-  const response = await api.put(`/tasks/${id}`, taskData);
+export const updateTask = async (id: number, taskData: UpdateTaskData): Promise<Task> => {
+  const response = await api.put<Task>(`/tasks/${id}`, taskData);
   return response.data;
 };
 
 /**
  * Delete a task
- * @param {number} id - Task ID
  */
-export const deleteTask = async (id) => {
-  const response = await api.delete(`/tasks/${id}`);
+export const deleteTask = async (id: number): Promise<{ message: string }> => {
+  const response = await api.delete<{ message: string }>(`/tasks/${id}`);
   return response.data;
 };
 
 export default api;
+

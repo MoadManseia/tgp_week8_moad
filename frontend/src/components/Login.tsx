@@ -1,16 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './Login.css';
 import { login } from '../services/api';
+import { User } from '../types';
 
-function Login({ onLogin }) {
+interface LoginProps {
+  onLogin: (user: User) => void;
+}
+
+const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [username, setUsername] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
     if (!username.trim() || !password.trim()) {
@@ -23,20 +28,16 @@ function Login({ onLogin }) {
 
     try {
       const response = await login({ username, password });
-      
-      // Call the onLogin callback with user data
       onLogin(response.user);
-      
-      // Navigate to home page
       navigate('/');
     } catch (err) {
-      // Show user-friendly error message
-      if (err.message.includes('Invalid credentials') || err.message.includes('401')) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      if (errorMessage.includes('Invalid credentials') || errorMessage.includes('401')) {
         setError('Invalid username or password. Please try again.');
-      } else if (err.message.includes('Network Error')) {
+      } else if (errorMessage.includes('Network Error')) {
         setError('Unable to connect to server. Please check your connection.');
       } else {
-        setError(err.message || 'Login failed. Please check your credentials.');
+        setError(errorMessage || 'Login failed. Please check your credentials.');
       }
     } finally {
       setIsLoading(false);
@@ -101,6 +102,7 @@ function Login({ onLogin }) {
       </div>
     </div>
   );
-}
+};
 
 export default Login;
+

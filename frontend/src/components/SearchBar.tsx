@@ -1,9 +1,23 @@
-import React from 'react';
+import React, { ChangeEvent } from 'react';
 import './SearchBar.css';
 
-function SearchBar({ value, onChange, placeholder = "Search tasks..." }) {
-  const handleClear = () => {
+interface SearchBarProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+const SearchBar: React.FC<SearchBarProps> = ({ 
+  value, 
+  onChange, 
+  placeholder = "Search tasks..." 
+}) => {
+  const handleClear = (): void => {
     onChange('');
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    onChange(e.target.value);
   };
 
   return (
@@ -12,7 +26,7 @@ function SearchBar({ value, onChange, placeholder = "Search tasks..." }) {
       <input
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         placeholder={placeholder}
         className="search-input"
       />
@@ -28,8 +42,7 @@ function SearchBar({ value, onChange, placeholder = "Search tasks..." }) {
       )}
     </div>
   );
-}
+};
 
 export default SearchBar;
-
 
