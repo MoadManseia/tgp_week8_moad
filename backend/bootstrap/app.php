@@ -14,7 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Apply custom CORS middleware globally
-        $middleware->prepend(Cors::class);
+        //$middleware->prepend(Cors::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
