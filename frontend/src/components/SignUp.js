@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import './SignUp.css';
 import { register, clearAuthData } from '../services/api';
 
-function SignUp({ onSwitchToLogin }) {
+function SignUp() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -79,7 +81,7 @@ function SignUp({ onSwitchToLogin }) {
       // Show success and navigate to login page
       setSuccess(true);
       setTimeout(() => {
-        onSwitchToLogin();
+        navigate('/login');
       }, 2000);
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -178,14 +180,9 @@ function SignUp({ onSwitchToLogin }) {
         
         <div className="signup-footer">
           <p>Already have an account?</p>
-          <button 
-            type="button" 
-            className="switch-to-login"
-            onClick={onSwitchToLogin}
-            disabled={isLoading}
-          >
+          <Link to="/login" className="switch-to-login">
             Sign In
-          </button>
+          </Link>
         </div>
       </div>
     </div>

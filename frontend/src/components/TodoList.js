@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import './TodoList.css';
 import SearchBar from './SearchBar';
 import { getTasks, createTask, updateTask, deleteTask } from '../services/api';
 
-function TodoList({ user, onSettings }) {
+function TodoList({ user }) {
   const [todos, setTodos] = useState([]);
   const [newTask, setNewTask] = useState('');
   const [filter, setFilter] = useState('all'); // all, active, completed
@@ -193,9 +194,9 @@ function TodoList({ user, onSettings }) {
           <h1>My Todo List</h1>
           <div className="user-info">
             <span className="username">Welcome, {user?.username || 'User'}!</span>
-            <button onClick={onSettings} className="settings-button">
+            <Link to="/settings" className="settings-button">
               ⚙️ Settings
-            </button>
+            </Link>
           </div>
         </div>
       </header>

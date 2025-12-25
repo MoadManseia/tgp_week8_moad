@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 import Login from "./components/Login";
 import SignUp from "./components/SignUp";
@@ -6,10 +7,24 @@ import TodoList from "./components/TodoList";
 import Settings from "./components/Settings";
 import { isAuthenticated, getStoredUser, clearAuthData } from "./services/api";
 
+// Protected Route component - redirects to login if not authenticated
+function ProtectedRoute({ children }) {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
+// Public Route component - redirects to home if already authenticated
+function PublicRoute({ children }) {
+  if (isAuthenticated()) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
 function App() {
   const [user, setUser] = useState(null);
-  const [currentPage, setCurrentPage] = useState("todos"); // 'todos' or 'settings'
-  const [authPage, setAuthPage] = useState("login"); // 'login' or 'signup'
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -25,35 +40,15 @@ function App() {
 
   const handleLogin = (userData) => {
     setUser(userData);
-    setCurrentPage("todos");
   };
-
 
   const handleLogout = () => {
     clearAuthData();
     setUser(null);
-    setCurrentPage("todos");
-    setAuthPage("login");
-  };
-
-  const handleSettings = () => {
-    setCurrentPage("settings");
-  };
-
-  const handleBackToTodos = () => {
-    setCurrentPage("todos");
   };
 
   const handleUserUpdate = (updatedUser) => {
     setUser(updatedUser);
-  };
-
-  const switchToSignUp = () => {
-    setAuthPage("signup");
-  };
-
-  const switchToLogin = () => {
-    setAuthPage("login");
   };
 
   // Show loading state while checking auth
@@ -66,30 +61,55 @@ function App() {
     );
   }
 
-  const renderAuthPage = () => {
-    if (authPage === "signup") {
-      return <SignUp onSwitchToLogin={switchToLogin} />;
-    }
-    return <Login onLogin={handleLogin} onSwitchToSignUp={switchToSignUp} />;
-  };
-
   return (
-    <div className="App">
-      {user ? (
-        currentPage === "settings" ? (
-          <Settings
-            user={user}
-            onLogout={handleLogout}
-            onBack={handleBackToTodos}
-            onUserUpdate={handleUserUpdate}
+    <Router>
+      <div className="App">
+        <Routes>
+          {/* Public Routes */}
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <Login onLogin={handleLogin} />
+              </PublicRoute>
+            }
           />
-        ) : (
-          <TodoList user={user} onSettings={handleSettings} />
-        )
-      ) : (
-        renderAuthPage()
-      )}
-    </div>
+          <Route
+            path="/signup"
+            element={
+              <PublicRoute>
+                <SignUp />
+              </PublicRoute>
+            }
+          />
+
+          {/* Protected Routes */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <TodoList user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings
+                  user={user}
+                  onLogout={handleLogout}
+                  onUserUpdate={handleUserUpdate}
+                />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch all - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import './Login.css';
 import { login } from '../services/api';
 
-function Login({ onLogin, onSwitchToSignUp }) {
+function Login({ onLogin }) {
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -24,6 +26,9 @@ function Login({ onLogin, onSwitchToSignUp }) {
       
       // Call the onLogin callback with user data
       onLogin(response.user);
+      
+      // Navigate to home page
+      navigate('/');
     } catch (err) {
       // Show user-friendly error message
       if (err.message.includes('Invalid credentials') || err.message.includes('401')) {
@@ -89,14 +94,9 @@ function Login({ onLogin, onSwitchToSignUp }) {
         
         <div className="login-footer">
           <p>Don't have an account?</p>
-          <button 
-            type="button" 
-            className="switch-to-signup"
-            onClick={onSwitchToSignUp}
-            disabled={isLoading}
-          >
+          <Link to="/signup" className="switch-to-signup">
             Create Account
-          </button>
+          </Link>
         </div>
       </div>
     </div>

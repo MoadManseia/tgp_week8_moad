@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import './Settings.css';
 import { logout, setStoredUser } from '../services/api';
 
-function Settings({ user, onLogout, onBack, onUserUpdate }) {
+function Settings({ user, onLogout, onUserUpdate }) {
+  const navigate = useNavigate();
   const [userData, setUserData] = useState({
     username: '',
     email: '',
@@ -52,6 +54,7 @@ function Settings({ user, onLogout, onBack, onUserUpdate }) {
       console.error('Logout error:', error);
     } finally {
       onLogout();
+      navigate('/login');
     }
   };
 
@@ -60,9 +63,9 @@ function Settings({ user, onLogout, onBack, onUserUpdate }) {
       <header className="settings-header">
         <div className="header-content">
           <h1>Settings</h1>
-          <button onClick={onBack} className="back-button">
+          <Link to="/" className="back-button">
             ← Back to Todos
-          </button>
+          </Link>
         </div>
       </header>
 
