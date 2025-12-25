@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import './TodoList.css';
+import SearchBar from './SearchBar';
 
 function TodoList({ username, onSettings }) {
   const [todos, setTodos] = useState([]);
   const [newTask, setNewTask] = useState('');
   const [filter, setFilter] = useState('all'); // all, active, completed
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Load todos from localStorage on mount
   useEffect(() => {
@@ -65,8 +67,14 @@ function TodoList({ username, onSettings }) {
   };
 
   const filteredTodos = todos.filter(todo => {
-    if (filter === 'active') return !todo.completed;
-    if (filter === 'completed') return todo.completed;
+    // First apply status filter
+    if (filter === 'active' && todo.completed) return false;
+    if (filter === 'completed' && !todo.completed) return false;
+    
+    // Then apply search filter
+    if (searchQuery.trim()) {
+      return todo.text.toLowerCase().includes(searchQuery.toLowerCase());
+    }
     return true;
   });
 
@@ -89,6 +97,12 @@ function TodoList({ username, onSettings }) {
 
       <main className="todo-main">
         <div className="todo-card">
+          <SearchBar 
+            value={searchQuery} 
+            onChange={setSearchQuery} 
+            placeholder="Search tasks..."
+          />
+
           <form onSubmit={addTask} className="add-task-form">
             <input
               type="text"
@@ -126,7 +140,11 @@ function TodoList({ username, onSettings }) {
           <div className="todos-list">
             {filteredTodos.length === 0 ? (
               <div className="empty-state">
-                <p>No tasks found. Add a new task to get started!</p>
+                {searchQuery ? (
+                  <p>No tasks matching "{searchQuery}"</p>
+                ) : (
+                  <p>No tasks found. Add a new task to get started!</p>
+                )}
               </div>
             ) : (
               filteredTodos.map(todo => (

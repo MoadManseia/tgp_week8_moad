@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import Login from "./components/Login";
+import SignUp from "./components/SignUp";
 import TodoList from "./components/TodoList";
 import Settings from "./components/Settings";
 
@@ -8,6 +9,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState("");
   const [currentPage, setCurrentPage] = useState("todos"); // 'todos' or 'settings'
+  const [authPage, setAuthPage] = useState("login"); // 'login' or 'signup'
 
   useEffect(() => {
     // Check if user is already logged in
@@ -35,6 +37,7 @@ function App() {
     setIsAuthenticated(false);
     setUsername("");
     setCurrentPage("todos");
+    setAuthPage("login");
   };
 
   const handleSettings = () => {
@@ -50,6 +53,21 @@ function App() {
     }
   };
 
+  const switchToSignUp = () => {
+    setAuthPage("signup");
+  };
+
+  const switchToLogin = () => {
+    setAuthPage("login");
+  };
+
+  const renderAuthPage = () => {
+    if (authPage === "signup") {
+      return <SignUp onSwitchToLogin={switchToLogin} />;
+    }
+    return <Login onLogin={handleLogin} onSwitchToSignUp={switchToSignUp} />;
+  };
+
   return (
     <div className="App">
       {isAuthenticated ? (
@@ -63,7 +81,7 @@ function App() {
           <TodoList username={username} onSettings={handleSettings} />
         )
       ) : (
-        <Login onLogin={handleLogin} />
+        renderAuthPage()
       )}
     </div>
   );

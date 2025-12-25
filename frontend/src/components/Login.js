@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Login.css';
 
-function Login({ onLogin }) {
+function Login({ onLogin, onSwitchToSignUp }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -9,14 +9,36 @@ function Login({ onLogin }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Simple fake authentication - accept any credentials
-    if (username.trim() && password.trim()) {
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('username', username);
-      onLogin(username);
-    } else {
+    if (!username.trim() || !password.trim()) {
       setError('Please enter both username and password');
+      return;
     }
+
+    // Check if user exists in localStorage
+    const registeredUsername = localStorage.getItem('registeredUsername');
+    const registeredPassword = localStorage.getItem('registeredPassword');
+
+    if (!registeredUsername) {
+      setError('No account found. Please sign up first.');
+      return;
+    }
+
+    if (username !== registeredUsername) {
+      setError('Username not found');
+      return;
+    }
+
+    if (password !== registeredPassword) {
+      setError('Incorrect password');
+      return;
+    }
+
+    // Successful login
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('username', username);
+    localStorage.setItem('userEmail', localStorage.getItem('registeredEmail') || '');
+    localStorage.setItem('userFullName', localStorage.getItem('registeredFullName') || '');
+    onLogin(username);
   };
 
   return (
@@ -57,7 +79,16 @@ function Login({ onLogin }) {
           </button>
         </form>
         
-        <p className="login-hint">Use any username and password to login</p>
+        <div className="login-footer">
+          <p>Don't have an account?</p>
+          <button 
+            type="button" 
+            className="switch-to-signup"
+            onClick={onSwitchToSignUp}
+          >
+            Create Account
+          </button>
+        </div>
       </div>
     </div>
   );
