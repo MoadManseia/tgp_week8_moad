@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, FormEvent, KeyboardEvent } from 'react';
+import React, { useState, useEffect, useCallback, useRef, FormEvent, KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import './TodoList.css';
 import SearchBar from './SearchBar';
@@ -47,7 +47,12 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
       
       // Add minimum delay to show skeleton (1.5 seconds minimum)
       const [paginationResult] = await Promise.all([
-        getTasks({ page, per_page: perPage }),
+        getTasks({ 
+          page, 
+          per_page: perPage,
+          search: searchQuery.trim() || undefined,
+          filter: filter
+        }),
         new Promise<void>(resolve => setTimeout(resolve, 1500))
       ]);
       
@@ -71,7 +76,9 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
         last_page: paginationResult.last_page,
         total: paginationResult.total,
         per_page: paginationResult.per_page,
-        data_count: paginationResult.data.length
+        data_count: paginationResult.data.length,
+        search: searchQuery,
+        filter: filter
       });
     } catch (err) {
       setError('Failed to load tasks. Please try again.');
@@ -79,8 +86,32 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [perPage]);
+  }, [perPage, searchQuery, filter]);
 
+  // Track previous search/filter to detect changes
+  const prevSearchRef = useRef(searchQuery);
+  const prevFilterRef = useRef(filter);
+
+  // Handle search and filter changes - reset to page 1
+  useEffect(() => {
+    const searchChanged = prevSearchRef.current !== searchQuery;
+    const filterChanged = prevFilterRef.current !== filter;
+    
+    // Update refs
+    prevSearchRef.current = searchQuery;
+    prevFilterRef.current = filter;
+    
+    // Only reset page if search or filter actually changed
+    if (searchChanged || filterChanged) {
+      const timeoutId = setTimeout(() => {
+        setCurrentPage(1);
+      }, searchChanged ? 500 : 0); // Debounce only for search
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [searchQuery, filter]);
+
+  // Reload tasks when page changes
   useEffect(() => {
     loadTasks(currentPage);
   }, [currentPage, loadTasks]);
@@ -242,15 +273,11 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
     }
   };
 
-  const filteredTodos = todos.filter(todo => {
-    if (filter === 'active' && todo.completed) return false;
-    if (filter === 'completed' && !todo.completed) return false;
-    if (searchQuery.trim()) {
-      return todo.text.toLowerCase().includes(searchQuery.toLowerCase());
-    }
-    return true;
-  });
-
+  // Note: Filtering and searching are now done server-side
+  // The todos array already contains filtered results from the API
+  
+  // For display purposes, we still calculate counts from current page
+  // (Note: These are page-specific counts, not total counts)
   const activeCount = todos.filter(todo => !todo.completed).length;
   const completedCount = todos.filter(todo => todo.completed).length;
 
@@ -349,19 +376,19 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
               onClick={() => setFilter('all')}
               className={filter === 'all' ? 'active' : ''}
             >
-              All ({todos.length})
+              All ({filter === 'all' ? totalTasks : todos.length})
             </button>
             <button
               onClick={() => setFilter('active')}
               className={filter === 'active' ? 'active' : ''}
             >
-              Active ({activeCount})
+              Active ({filter === 'active' ? totalTasks : activeCount})
             </button>
             <button
               onClick={() => setFilter('completed')}
               className={filter === 'completed' ? 'active' : ''}
             >
-              Completed ({completedCount})
+              Completed ({filter === 'completed' ? totalTasks : completedCount})
             </button>
           </div>
 
@@ -380,7 +407,7 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
               </div>
             )}
             
-            {filteredTodos.length === 0 && !isAddingTask ? (
+            {todos.length === 0 && !isAddingTask ? (
               <div className="empty-state">
                 {searchQuery ? (
                   <p>No tasks matching "{searchQuery}"</p>
@@ -393,7 +420,7 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
                 )}
               </div>
             ) : (
-              filteredTodos.map(todo => (
+              todos.map(todo => (
                 <TodoItem
                   key={todo.id}
                   todo={todo}
@@ -413,8 +440,8 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
             </button>
           )}
 
-          {/* Pagination - only show when not filtering/searching */}
-          {filter === 'all' && !searchQuery && totalTasks > perPage && (
+          {/* Pagination - show when there are multiple pages (works with filters/search) */}
+          {totalTasks > perPage && (
             <Pagination
               currentPage={currentPage}
               lastPage={lastPage}

@@ -8,14 +8,36 @@ use Illuminate\Http\Request;
 class TaskController extends Controller
 {
     /**
-     * Get all tasks for the authenticated user with pagination.
+     * Get all tasks for the authenticated user with pagination, search, and filters.
      */
     public function index(Request $request)
     {
         $perPage = $request->input('per_page', 5); // Default 5 tasks per page
         $page = $request->input('page', 1);
+        $search = $request->input('search', '');
+        $filter = $request->input('filter', 'all'); // all, active, completed
         
-        $tasks = $request->user()->tasks()->latest()->paginate($perPage, ['*'], 'page', $page);
+        // Start with user's tasks query
+        $query = $request->user()->tasks();
+        
+        // Apply search filter (search in title and description)
+        if (!empty($search)) {
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'LIKE', '%' . $search . '%')
+                  ->orWhere('description', 'LIKE', '%' . $search . '%');
+            });
+        }
+        
+        // Apply status filter
+        if ($filter === 'active') {
+            $query->where('is_completed', false);
+        } elseif ($filter === 'completed') {
+            $query->where('is_completed', true);
+        }
+        // 'all' filter doesn't need any additional where clause
+        
+        // Apply ordering and pagination
+        $tasks = $query->latest()->paginate($perPage, ['*'], 'page', $page);
         
         return response()->json([
             'data' => $tasks->items(),

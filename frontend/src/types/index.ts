@@ -73,6 +73,8 @@ export interface PaginatedResponse<T> {
 export interface PaginationParams {
   page?: number;
   per_page?: number;
+  search?: string;
+  filter?: 'all' | 'active' | 'completed';
 }
 
 

@@ -172,14 +172,26 @@ export const getProfile = async (): Promise<User> => {
 // ============================================
 
 /**
- * Get all tasks for the authenticated user with pagination
+ * Get all tasks for the authenticated user with pagination, search, and filters
  */
 export const getTasks = async (params?: PaginationParams): Promise<PaginatedResponse<Task>> => {
+  const queryParams: Record<string, any> = {
+    page: params?.page || 1,
+    per_page: params?.per_page || 5,
+  };
+  
+  // Add search parameter if provided
+  if (params?.search && params.search.trim()) {
+    queryParams.search = params.search.trim();
+  }
+  
+  // Add filter parameter if provided
+  if (params?.filter && params.filter !== 'all') {
+    queryParams.filter = params.filter;
+  }
+  
   const response = await api.get<PaginatedResponse<Task>>('/tasks', {
-    params: {
-      page: params?.page || 1,
-      per_page: params?.per_page || 5,
-    }
+    params: queryParams
   });
   return response.data;
 };
