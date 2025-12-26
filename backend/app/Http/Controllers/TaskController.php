@@ -8,12 +8,24 @@ use Illuminate\Http\Request;
 class TaskController extends Controller
 {
     /**
-     * Get all tasks for the authenticated user.
+     * Get all tasks for the authenticated user with pagination.
      */
     public function index(Request $request)
     {
-        $tasks = $request->user()->tasks()->latest()->get();
-        return response()->json($tasks);
+        $perPage = $request->input('per_page', 5); // Default 5 tasks per page
+        $page = $request->input('page', 1);
+        
+        $tasks = $request->user()->tasks()->latest()->paginate($perPage, ['*'], 'page', $page);
+        
+        return response()->json([
+            'data' => $tasks->items(),
+            'current_page' => $tasks->currentPage(),
+            'last_page' => $tasks->lastPage(),
+            'per_page' => $tasks->perPage(),
+            'total' => $tasks->total(),
+            'from' => $tasks->firstItem(),
+            'to' => $tasks->lastItem(),
+        ]);
     }
 
     /**

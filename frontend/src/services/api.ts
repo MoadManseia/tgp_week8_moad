@@ -6,7 +6,9 @@ import {
   RegisterData, 
   Task, 
   CreateTaskData, 
-  UpdateTaskData 
+  UpdateTaskData,
+  PaginatedResponse,
+  PaginationParams
 } from '../types';
 
 // API configuration for Laravel backend
@@ -170,10 +172,15 @@ export const getProfile = async (): Promise<User> => {
 // ============================================
 
 /**
- * Get all tasks for the authenticated user
+ * Get all tasks for the authenticated user with pagination
  */
-export const getTasks = async (): Promise<Task[]> => {
-  const response = await api.get<Task[]>('/tasks');
+export const getTasks = async (params?: PaginationParams): Promise<PaginatedResponse<Task>> => {
+  const response = await api.get<PaginatedResponse<Task>>('/tasks', {
+    params: {
+      page: params?.page || 1,
+      per_page: params?.per_page || 5,
+    }
+  });
   return response.data;
 };
 
@@ -210,4 +217,5 @@ export const deleteTask = async (id: number): Promise<{ message: string }> => {
 };
 
 export default api;
+
 

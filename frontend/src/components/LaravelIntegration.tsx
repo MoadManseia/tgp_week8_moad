@@ -137,3 +137,4 @@ const LaravelIntegration: React.FC = () => {
 
 export default LaravelIntegration;
 
+

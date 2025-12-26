@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, FormEvent, KeyboardEvent } fro
 import { Link } from 'react-router-dom';
 import './TodoList.css';
 import SearchBar from './SearchBar';
+import Pagination from './Pagination';
 import { TodoListSkeleton } from './Skeleton';
 import { getTasks, createTask, updateTask, deleteTask } from '../services/api';
 import { User, Todo } from '../types';
@@ -32,19 +33,25 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
   const [isAddingTask, setIsAddingTask] = useState<boolean>(false);
   const [deletingTaskIds, setDeletingTaskIds] = useState<Set<number>>(new Set());
   const [updatingTaskIds, setUpdatingTaskIds] = useState<Set<number>>(new Set());
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [lastPage, setLastPage] = useState<number>(1);
+  const [totalTasks, setTotalTasks] = useState<number>(0);
+  const [perPage] = useState<number>(5);
 
-  const loadTasks = useCallback(async (): Promise<void> => {
+  const loadTasks = useCallback(async (page: number): Promise<void> => {
     try {
       setIsLoading(true);
       setError('');
       
       // Add minimum delay to show skeleton (1.5 seconds minimum)
-      const [tasksResult] = await Promise.all([
-        getTasks(),
+      const [paginationResult] = await Promise.all([
+        getTasks({ page, per_page: perPage }),
         new Promise<void>(resolve => setTimeout(resolve, 1500))
       ]);
       
-      const mappedTasks: Todo[] = tasksResult.map(task => ({
+      const mappedTasks: Todo[] = paginationResult.data.map(task => ({
         id: task.id,
         text: task.title,
         description: task.description,
@@ -52,18 +59,37 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
         createdAt: task.created_at,
         updatedAt: task.updated_at,
       }));
+      
       setTodos(mappedTasks);
+      setCurrentPage(paginationResult.current_page);
+      setLastPage(paginationResult.last_page);
+      setTotalTasks(paginationResult.total);
+      
+      // Debug logging
+      console.log('Pagination data:', {
+        current_page: paginationResult.current_page,
+        last_page: paginationResult.last_page,
+        total: paginationResult.total,
+        per_page: paginationResult.per_page,
+        data_count: paginationResult.data.length
+      });
     } catch (err) {
       setError('Failed to load tasks. Please try again.');
       console.error('Load tasks error:', err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [perPage]);
 
   useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+    loadTasks(currentPage);
+  }, [currentPage, loadTasks]);
+
+  const handlePageChange = (page: number): void => {
+    setCurrentPage(page);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const addTask = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -89,16 +115,15 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
         new Promise<void>(resolve => setTimeout(resolve, 800))
       ]);
 
-      const newTodo: Todo = {
-        id: task.id,
-        text: task.title,
-        description: task.description,
-        completed: task.is_completed,
-        createdAt: task.created_at,
-        updatedAt: task.updated_at,
-      };
-
-      setTodos(prev => [newTodo, ...prev]);
+      // Always reload to ensure correct pagination
+      // New tasks always appear on page 1, so reload page 1
+      if (currentPage === 1) {
+        // Reload current page to update pagination metadata
+        await loadTasks(1);
+      } else {
+        // Switch to page 1 to show the new task
+        setCurrentPage(1);
+      }
     } catch (err) {
       setNewTask(taskText); // Restore task text on error
       setNewDescription(taskDescription); // Restore description on error
@@ -150,7 +175,17 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
         new Promise<void>(resolve => setTimeout(resolve, 600))
       ]);
       
-      setTodos(todos.filter(t => t.id !== id));
+      const remainingTasks = todos.filter(t => t.id !== id);
+      setTodos(remainingTasks);
+      setTotalTasks(prev => prev - 1);
+      
+      // If current page becomes empty and not on first page, go to previous page
+      if (remainingTasks.length === 0 && currentPage > 1) {
+        setCurrentPage(prev => prev - 1);
+      } else {
+        // Reload current page to ensure correct pagination
+        await loadTasks(currentPage);
+      }
     } catch (err) {
       setError('Failed to delete task. Please try again.');
       console.error('Delete task error:', err);
@@ -186,12 +221,22 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
 
   const clearCompleted = async (): Promise<void> => {
     const completedTodos = todos.filter(t => t.completed);
+    const completedCount = completedTodos.length;
+    
     setTodos(todos.filter(t => !t.completed));
 
     try {
       await Promise.all(completedTodos.map(t => deleteTask(t.id)));
+      setTotalTasks(prev => prev - completedCount);
+      
+      // Reload current page or go to first page if current page becomes empty
+      if (todos.length - completedCount === 0 && currentPage > 1) {
+        setCurrentPage(1);
+      } else {
+        await loadTasks(currentPage);
+      }
     } catch (err) {
-      await loadTasks();
+      await loadTasks(currentPage);
       setError('Failed to clear completed tasks. Please try again.');
       console.error('Clear completed error:', err);
     }
@@ -366,6 +411,17 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
             <button onClick={clearCompleted} className="clear-button">
               Clear Completed ({completedCount})
             </button>
+          )}
+
+          {/* Pagination - only show when not filtering/searching */}
+          {filter === 'all' && !searchQuery && totalTasks > perPage && (
+            <Pagination
+              currentPage={currentPage}
+              lastPage={lastPage}
+              total={totalTasks}
+              perPage={perPage}
+              onPageChange={handlePageChange}
+            />
           )}
         </div>
       </main>
