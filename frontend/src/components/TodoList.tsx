@@ -40,7 +40,12 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
   const [totalTasks, setTotalTasks] = useState<number>(0);
   const [perPage] = useState<number>(5);
 
-  const loadTasks = useCallback(async (page: number): Promise<void> => {
+  // Stable load tasks function - doesn't depend on search/filter to avoid re-renders
+  const loadTasks = useCallback(async (
+    page: number, 
+    search: string, 
+    filterValue: 'all' | 'active' | 'completed'
+  ): Promise<void> => {
     try {
       setIsLoading(true);
       setError('');
@@ -50,8 +55,8 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
         getTasks({ 
           page, 
           per_page: perPage,
-          search: searchQuery.trim() || undefined,
-          filter: filter
+          search: search.trim() || undefined,
+          filter: filterValue
         }),
         new Promise<void>(resolve => setTimeout(resolve, 1500))
       ]);
@@ -66,19 +71,19 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
       }));
       
       setTodos(mappedTasks);
-      setCurrentPage(paginationResult.current_page);
       setLastPage(paginationResult.last_page);
       setTotalTasks(paginationResult.total);
       
       // Debug logging
       console.log('Pagination data:', {
+        requested_page: page,
         current_page: paginationResult.current_page,
         last_page: paginationResult.last_page,
         total: paginationResult.total,
         per_page: paginationResult.per_page,
         data_count: paginationResult.data.length,
-        search: searchQuery,
-        filter: filter
+        search: search,
+        filter: filterValue
       });
     } catch (err) {
       setError('Failed to load tasks. Please try again.');
@@ -86,14 +91,22 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [perPage, searchQuery, filter]);
+  }, [perPage]);
 
-  // Track previous search/filter to detect changes
+  // Track previous search/filter to detect changes and reset page
   const prevSearchRef = useRef(searchQuery);
   const prevFilterRef = useRef(filter);
+  const isFirstMount = useRef(true);
 
-  // Handle search and filter changes - reset to page 1
+  // Single effect to handle all task loading
   useEffect(() => {
+    // Skip the first mount - we'll load in the next effect
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      loadTasks(currentPage, searchQuery, filter);
+      return;
+    }
+
     const searchChanged = prevSearchRef.current !== searchQuery;
     const filterChanged = prevFilterRef.current !== filter;
     
@@ -101,20 +114,24 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
     prevSearchRef.current = searchQuery;
     prevFilterRef.current = filter;
     
-    // Only reset page if search or filter actually changed
+    // If search or filter changed, reset to page 1 with debounce for search
     if (searchChanged || filterChanged) {
       const timeoutId = setTimeout(() => {
-        setCurrentPage(1);
-      }, searchChanged ? 500 : 0); // Debounce only for search
+        if (currentPage === 1) {
+          // Already on page 1, just reload
+          loadTasks(1, searchQuery, filter);
+        } else {
+          // Reset to page 1 (this will trigger another effect run)
+          setCurrentPage(1);
+        }
+      }, searchChanged ? 500 : 0);
       
       return () => clearTimeout(timeoutId);
     }
-  }, [searchQuery, filter]);
-
-  // Reload tasks when page changes
-  useEffect(() => {
-    loadTasks(currentPage);
-  }, [currentPage, loadTasks]);
+    
+    // Page changed, load the new page
+    loadTasks(currentPage, searchQuery, filter);
+  }, [currentPage, searchQuery, filter, loadTasks]);
 
   const handlePageChange = (page: number): void => {
     setCurrentPage(page);
@@ -150,7 +167,7 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
       // New tasks always appear on page 1, so reload page 1
       if (currentPage === 1) {
         // Reload current page to update pagination metadata
-        await loadTasks(1);
+        await loadTasks(1, searchQuery, filter);
       } else {
         // Switch to page 1 to show the new task
         setCurrentPage(1);
@@ -215,7 +232,7 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
         setCurrentPage(prev => prev - 1);
       } else {
         // Reload current page to ensure correct pagination
-        await loadTasks(currentPage);
+        await loadTasks(currentPage, searchQuery, filter);
       }
     } catch (err) {
       setError('Failed to delete task. Please try again.');
@@ -264,10 +281,10 @@ const TodoList: React.FC<TodoListProps> = ({ user }) => {
       if (todos.length - completedCount === 0 && currentPage > 1) {
         setCurrentPage(1);
       } else {
-        await loadTasks(currentPage);
+        await loadTasks(currentPage, searchQuery, filter);
       }
     } catch (err) {
-      await loadTasks(currentPage);
+      await loadTasks(currentPage, searchQuery, filter);
       setError('Failed to clear completed tasks. Please try again.');
       console.error('Clear completed error:', err);
     }
